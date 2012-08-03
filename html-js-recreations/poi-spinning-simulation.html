@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <style>
+    canvas { display:block; }
+    input,
+    label { display:block; float:left; clear:both; width:8em; margin:0.5em 0; }
+    label + input { clear:none; }
+  </style>
+
+  <script>
+    //TODO: Use strict mode.
+    window.addEventListener('load',
+    function () {
+      var frequency   = 96;
+
+      var fullCircleRadians = Math.PI * 2;
+
+      var fullWidth  = 400,
+          fullHeight = 400;
+
+      var centerX = fullWidth / 2,
+          centerY = fullHeight / 2,
+          armCircleRadius  = 90,
+          armCirclePhase   = 0,
+          poiCircleRadius = 90,
+          poiCirclePhase  = fullCircleRadians / 2;
+
+      var canvas = document.getElementById('the-canvas');
+      var ctx = canvas.getContext('2d');
+
+      function iterate(armRotations, poiRotations, iteration) {
+        if(iteration > frequency) {
+          document.getElementById('run-it').removeAttribute('disabled');
+          return;
+        }
+
+        var armAngle = fullCircleRadians * armRotations / frequency * iteration + armCirclePhase;
+        var armUnitX = Math.sin(armAngle),
+            armUnitY = Math.cos(armAngle);
+        var armX = centerX + armUnitX * armCircleRadius,
+            armY = centerY + armUnitY * armCircleRadius;
+
+        var poiAngle = fullCircleRadians * poiRotations / frequency * iteration + poiCirclePhase;
+        var poiUnitX = Math.sin(poiAngle),
+            poiUnitY = Math.cos(poiAngle);
+        var poiX = armX + poiUnitX * poiCircleRadius,
+            poiY = armY + poiUnitY * poiCircleRadius;
+
+        ctx.fillStyle = 'rgba(255,255,255,0.017)';
+        ctx.fillRect(0, 0, fullWidth, fullHeight);
+
+        ctx.strokeStyle = 'grey';
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.lineTo(armX, armY);
+        ctx.lineTo(poiX, poiY);
+        ctx.stroke();
+
+        ctx.fillStyle = 'green';
+        ctx.beginPath();
+        ctx.arc(armX, armY, 3, fullCircleRadians, false);
+        ctx.fill();
+
+        ctx.fillStyle = 'red';
+        ctx.beginPath();
+        ctx.arc(poiX, poiY, 5, fullCircleRadians, false);
+        ctx.fill();
+
+        setTimeout(function(){ iterate(armRotations, poiRotations, iteration + 1); }, 100);
+      }
+
+      function runIt() {
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, fullWidth, fullHeight);
+
+        document.getElementById('run-it').setAttribute('disabled', 'disabled');
+
+        iterate(
+          parseFloat(document.getElementById('arm-rotations').value),
+          parseFloat(document.getElementById('poi-rotations').value),
+          0
+        );
+      }
+
+      document.getElementById('run-it').addEventListener('click', runIt, true);
+
+      runIt();
+    });
+  </script>
+</head>
+
+<body>
+  <h1>Poi Compound Circle (Flower) Patterns</h1>
+  <p>Besides software development, one of my hobbies is poi spinning.
+  If you don&apos;t know what that is, here are some YouTube video
+  links of folks doing it:</p>
+  <ul>
+    <li><a href='http://www.youtube.com/watch?v=XoPBpATaZa0'>Glow Poi Spinning at Laban</a></li>
+    <li><a href='http://www.youtube.com/watch?v=hZ5UXFRWGeQ'>Fire Poi - Yuta (YouTube)</a></li>
+  </ul>
+  <p>One kind of thing we can do with poi is called a compound circle
+  or flower pattern, in which the arm makes a circular motion while
+  the ball makes a circular motion around the hand. Depending on the
+  relative direction of the arm and poi and the ratio of rotations
+  between the two, different kinds of Spirograph-like patterns are
+  formed.</p>
+  <p>This page is something I whipped up in a few hours over a couple
+  of days to simulate these kinds of patterns using Canvas and
+  JavaScript. Note that this will only work in a Canvas-capable
+  browser.</p>
+  <canvas id='the-canvas' width='400' height='400'>
+    <p>
+      This page will not work in your browser.
+      It requires support for the &lt;canvas&gt; element, which your
+      browser does not have.
+    </p>
+  </canvas>
+  <label for='arm-rotations'>Arm Rotations</label><input id='arm-rotations' type='number' min='-1' max='1' value='1'>
+  <label for='poi-rotations'>Poi Rotations</label><input id='poi-rotations' type='number' min='-6' max='6' value='-2'>
+  <input id='run-it' disabled='disabled' type='button' value='Run'>
+
+</body>
+
+</html>
