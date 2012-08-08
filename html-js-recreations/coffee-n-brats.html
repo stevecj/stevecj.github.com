@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<!-- Copyright Steve Jorgensen, 2010 -->
+<html>
+  <head>
+    <script>
+ 
+var pageApp = function(){
+  
+  // The application scope to be returned and placed into pageApp.
+  var appScope = {};
+  
+  // Add the init() function to the application scope.  Invoking
+  // init() adds the remaining application features to the scope.
+  appScope.init = function() {
+    var gridW=10, gridH=10, cellW=30, cellH=30;
+ 
+    var imageW = gridW * cellW,
+        imageH = gridH * cellH;
+
+    var setBusy = function() {
+      var ids = [
+        'moveUpLeftButton', 'moveUpButton', 'moveUpRightButton',
+        'moveLeftButton', 'theCanvas', 'moveRightButton',
+        'moveDownLeftButton', 'moveDownButton', 'moveDownRightButton',
+        'zoomInButton', 'zoomOutButton', 'goHomeButton', 
+        'renderButton', 'paintButton', 'defaultColoringButton',
+        'cycleOutButton', 'cycleInButton', 'goToBookmarkButton'
+      ];
+      var elements = [];
+      for(var i=0; i<ids.length; i++) {
+        elements.push(document.getElementById(ids[i]));
+      }
+      return function(busy) {
+        for(i=0; i<elements.length; i++) { elements[i].disabled = busy; }
+      };
+    }();
+
+    setBusy( true );
+ 
+    var theCanvasElem = document.getElementById('theCanvas');
+    theCanvasElem.width = imageW;
+    theCanvasElem.height = imageH;
+ 
+    if( ! theCanvasElem.getContext ) {
+      appScope.teardown = function() { return true; };
+      var msg = "This program will not run in your browser, because it " +
+                "does not support the HTML5 canvas element.  Try again " +
+                "using a current version of Google Chrome, Apple Safari, " +
+                "Opera, or Firefox.";
+      alert(msg);
+      return false;
+    }
+ 
+    var halfImgW = imageW >> 1,
+        halfImgH = imageH >> 1;
+ 
+    // True modulus operation
+    function mod(n, m) {
+      return ( (n % m) + m) % m;
+    }
+
+    function parseInt10(str) {
+      return parseInt(str, 10);
+    }
+
+    function mandelbrot(x, y, max) {
+      var a=x, b=y, count=0, aa=x*x, bb=y*y;
+      while( aa + bb < 4.0 ) {
+        ++count;
+        if(count >= max) { break; }
+        aa = a*a; bb=b*b;
+        b = a * b * 2 + y;
+        a = aa - bb + x;
+      }
+      return count;
+    }
+ 
+    var viewport = {
+      x0: 0.0, y0: -0.0, scale: 5.0,
+      pxToX: function(px){ return (px-halfImgW) * this.scale / imageW + this.x0; },
+      pyToY: function(py){ return (halfImgH-py) * this.scale / imageH + this.y0; }
+    };
+ 
+    function makeColorCalc(spec){
+      var _rangeFrom = spec.rangeFrom,
+          _rangeTo = spec.rangeTo,
+          _stepSpanShift = spec.stepSpanShift,
+          _stepBy = spec.stepBy,
+          _rangeSize = spec.rangeTo - spec.rangeFrom + 1,
+          _offset = spec.offset;
+      var colorCalcFn;
+      if( spec.direction == 'DOWN' ) {
+        var cycle = _rangeSize << _stepSpanShift;
+        _offset += cycle;
+        colorCalcFn = function(count) {
+          var stepped = ( (count+_offset) >> _stepSpanShift) * _stepBy;
+          return _rangeTo - (stepped % _rangeSize);
+        };
+        colorCalcFn.cycle = cycle << _stepSpanShift;
+      } else if( spec.direction == 'UP_DOWN' && _rangeSize > 1 ) {
+        var _mod = _rangeSize * 2 - 2;
+        colorCalcFn = function(count) {
+          var stepped = ( (count+_offset) >> _stepSpanShift) * _stepBy;
+          return _rangeFrom + Math.abs(((stepped + _rangeSize) % _mod) - _rangeSize + 2) ;
+        };
+        colorCalcFn.cycle = _mod << (_stepSpanShift+1);
+      } else {
+        // Default direction is 'UP'
+        colorCalcFn = function(count) {
+          var stepped = ( (count+_offset) >> _stepSpanShift) * _stepBy;
+          return _rangeFrom + (stepped % _rangeSize);
+        };
+        colorCalcFn.cycle = _rangeSize << _stepSpanShift;
+      }
+      return colorCalcFn;
+    }
+   
+    var rendering = { maxCount: 100 },
+        redColorData = {},
+        greenColorData = {},
+        blueColorData = {};
+ 
+    var redCalc, greenCalc, blueCalc;
+    function initColorCalculations() {
+      redCalc = makeColorCalc(redColorData);
+      greenCalc = makeColorCalc(greenColorData);
+      blueCalc = makeColorCalc(blueColorData);
+      return true;
+    }
+ 
+    var grid = [];
+    for(var gy=0; gy<gridH; gy++) {
+      for(var gx=0; gx<gridW; gx++) {
+        var px = gx*cellW, py = gy*cellH;
+        grid.push({
+          gx: gx, gy: gy,
+          px: px, py: py,
+          px2: px + cellW, py2: py + cellH
+        });
+      }
+    }
+ 
+    function ImageDataCreator(ctx) {
+      var _ctx = ctx;
+      
+      if (ctx.createImageData) {
+        this.create = function(width, height) {
+          return _ctx.createImageData(width, height);
+        };
+      } else if (ctx.getImageData) {
+        this.create = function(width, height) {
+          return _ctx.getImageData(0, 0, width, height);
+        };
+      } else {
+        this.create = function(width, height) {
+          return {
+            'width' : width, 'height' : height,
+            'data' : new Array(width*height*4)
+          };
+        };
+      }     
+      
+    }
+ 
+    var ctx = theCanvasElem.getContext('2d');
+    
+    var imgDataCreator = new ImageDataCreator(ctx);
+    
+    var cellDataList = [], cellImgdList = [];
+    for(var i=0; i<grid.length; i++) {
+      cellDataList.push( new Array(cellW * cellH) );
+      cellImgdList.push( imgDataCreator.create(cellW, cellH) );
+    }
+ 
+    function paintCell(cellIdx) {
+      var cell=grid[cellIdx],
+          data=cellDataList[cellIdx],
+          imgd = cellImgdList[cellIdx];
+      var pixs = imgd.data;
+     
+      // In Firefox 3.6, profiling and subjective experience
+      // indicates that the do/while loop with decrement is
+      // significantly faster than using a for loop in this
+      // performance-critical case.
+      var dataIdx = data.length, pxIdx = data.length * 4;
+      var ptValue;
+      do {
+        --dataIdx; pxIdx -= 4;
+        ptValue = data[dataIdx];
+        pixs[pxIdx + 3] = 255;  // Opacity
+        if( ptValue >= rendering.maxCount ) {
+          pixs[pxIdx] = 0; pixs[pxIdx+1] = 0; pixs[pxIdx+2] = 0;
+        } else {
+          pixs[pxIdx]   = redCalc(ptValue);
+          pixs[pxIdx+1] = greenCalc(ptValue);
+          pixs[pxIdx+2] = blueCalc(ptValue);
+        }
+      } while(dataIdx);
+      
+      ctx.putImageData(imgd, cell.px, cell.py);
+    }
+ 
+    function renderCell(cellIdx) {
+      var cell=grid[cellIdx], data=cellDataList[cellIdx];
+ 
+      var coordIdx = 0;
+      for(var py=cell.py; py<cell.py2; ++py) {
+        for(var px=cell.px; px<cell.px2; ++px) {
+          var x = viewport.pxToX(px),
+              y = viewport.pyToY(py);
+          data[coordIdx] = mandelbrot(x, y, rendering.maxCount);
+          coordIdx++;
+        }
+      }
+      paintCell(cellIdx);
+    }
+
+    function UIField(spec) {
+      var element = document.getElementById(spec.fieldId);
+      this.store = function(){
+        element.value = spec.obj[spec.attr].toString();
+        return true;
+      };
+      var elemDefault = element.value;
+      this.storeDefault = function() {
+        element.value = elemDefault;
+        return true;
+      };
+      this.load = function() {
+        var value = element.value;
+        if(spec.parseFn) { value = spec.parseFn(value); }
+        if(spec.min && value < spec.min) {
+          value = spec.min;
+        } else if(spec.max && value > spec.max) {
+          value = spec.max;
+        }
+        spec.obj[spec.attr] = value;
+        return this.store();
+      };
+    }
+ 
+    function UIFields(specList) {
+      var uiFieldList = [];
+      for(var i=0; i<specList.length; i++) {
+        var spec = specList[i];
+        uiFieldList.push( new UIField(spec) );
+      }
+      this.load = function() {
+        for(var i=0; i<uiFieldList.length; i++) {
+          uiFieldList[i].load();
+        }
+        return true;
+      };
+      this.store = function() {
+        for(var i=0; i<uiFieldList.length; i++) {
+          uiFieldList[i].store();
+        }
+        return true;
+      };
+      this.storeDefaults = function() {
+        for(var i=0; i<uiFieldList.length; i++) {
+          uiFieldList[i].storeDefault();
+        }
+        return true;
+      };
+    }
+
+    var renderingFields = new UIFields([
+      {fieldId: 'viewport_x0', obj: viewport, attr: 'x0', parseFn: parseFloat, min: -4.0, max: 4.0 },
+      {fieldId: 'viewport_y0', obj: viewport, attr: 'y0', parseFn: parseFloat, min: -4.0, max: 4.0 },
+      {fieldId: 'viewport_scale', obj: viewport, attr: 'scale', parseFn: parseFloat, min: 0.0, max: 5.0  },
+      {fieldId: 'rendering_maxCount', obj: rendering, attr: 'maxCount', parseFn: parseInt10, min: 50, max: 10000 }
+    ]);    
+ 
+    var colorFields = function(color, data) {
+      var colorsSpecList = [
+        {color: 'red', data: redColorData},
+        {color: 'green', data: greenColorData},
+        {color: 'blue', data: blueColorData}
+      ];
+      var spec = [], colorsSpec;
+      for(var i = 0; i<3; i++) {
+        colorsSpec = colorsSpecList[i];
+        color = colorsSpec.color; data = colorsSpec.data;
+        spec.push({ fieldId: color + 'CalcData_rangeFrom', obj: data, attr: 'rangeFrom', parseFn: parseInt10, min: 0, max: 255 });
+        spec.push({ fieldId: color + 'CalcData_rangeTo', obj: data, attr: 'rangeTo', parseFn: parseInt10, min: 0, max: 255 });
+        spec.push({ fieldId: color + 'CalcData_stepSpanShift', obj: data, attr: 'stepSpanShift', parseFn: parseInt10 });
+        spec.push({ fieldId: color + 'CalcData_stepBy', obj: data, attr: 'stepBy', parseFn: parseInt10, min: 1, max: 255 });
+        spec.push({ fieldId: color + 'CalcData_direction', obj: data, attr: 'direction', parseFn: null, min: null, max: null });
+        spec.push({ fieldId: color + 'CalcData_cycleOffset', obj: data, attr: 'offset', parseFn: parseInt10, min: 0, max: 32767 });
+      }
+      return new UIFields(spec);
+    }();
+    //appScope.colorFields = colorFields;
+ 
+    var storeBookmark, loadBookmark;
+    (function() {
+      var bookmarkElem = document.bookmarkForm.bookmark;
+      var bookmarkUrlElem = document.bookmarkForm.bookmarkUrl;
+      var settingsFields = [];
+      var i, inp;
+      for(i=0; i < document.renderForm.elements.length; i++) {
+        inp = document.renderForm.elements[i];
+        if(inp.name) { settingsFields.push(inp); }
+      }
+      for(i=0; i < document.paintForm.elements.length; i++) {
+        inp = document.paintForm.elements[i];
+        if(inp.name) { settingsFields.push(inp); }
+      }
+      storeBookmark = function() {
+        var bookmarkData = {};
+        for(i=0; i<settingsFields.length; i++){
+          inp = settingsFields[i];
+          if(inp.name) { bookmarkData[inp.name] = inp.value; }
+        }
+        bookmarkElem.value = JSON.stringify( bookmarkData );
+        bookmarkUrlElem.value = 
+          window.location.protocol + '//' + 
+          window.location.host + 
+          window.location.port +
+          window.location.pathname + 
+          '#' + escape(bookmarkElem.value);
+      };
+      loadBookmark = function() {
+        var bookmarkData = JSON.parse( bookmarkElem.value );
+        for(var i=0; i<settingsFields.length; i++){
+          var inp = settingsFields[i];
+          inp.value = bookmarkData[inp.name];
+        }
+      };
+      if(window.location.hash) {
+        bookmarkElem.value =
+          unescape( window.location.hash.substr(1) );
+        loadBookmark();
+      }
+    })();
+ 
+    function paint(select) {
+      setBusy( true );
+      initColorCalculations();
+      for(var cellIdx=0; cellIdx<grid.length; cellIdx++) {
+        if( (! select) || select(cellIdx) ) {
+          paintCell(cellIdx);
+        }
+      }
+      setBusy( false );
+      return true;
+    }
+    
+    var continueRenderTimeout = null;
+    
+    function startRender(select) {
+      setBusy( true );
+      initColorCalculations();
+      colorFields.store();
+      var cellIdx = 0, renderFn;
+      renderFn = function() {
+        continueRenderTimeout = null;
+        var startTime = (new Date()).valueOf();
+        while(cellIdx < grid.length) {
+          if( (! select) || select(cellIdx) ) {
+            renderCell(cellIdx);
+            cellIdx++;
+            if((new Date()) - startTime > 250) { break; }
+          } else {
+            cellIdx++;
+          }
+        }
+        if(cellIdx < grid.length) {
+          continueRenderTimeout = setTimeout(renderFn, 25);
+        } else {
+          setBusy( false );
+        }
+      };
+      renderFn();
+      return true;
+    }
+    
+    function zoomIn() {
+      viewport.scale = viewport.scale * 2 / 3;
+      renderingFields.store();
+      colorFields.load();
+      startRender();
+    }
+    appScope.zoomIn = zoomIn;
+ 
+    function zoomOut() {
+      viewport.scale = viewport.scale * 3 / 2;
+      renderingFields.store();
+      startRender();
+    }
+    appScope.zoomOut = zoomOut;
+    
+    function moveUp() {
+      var shiftForwardBy = gridW * 3;
+      for(var i=0; i<shiftForwardBy; i++) {
+        cellDataList.unshift( cellDataList.pop() );
+        cellImgdList.unshift( cellImgdList.pop() );
+      }
+      viewport.y0 = viewport.y0 + viewport.scale * 3 / gridH;
+      paint(function(i){ return i >= shiftForwardBy; });
+      startRender(function(i){ return i < shiftForwardBy; });
+    }
+    
+    function moveDown() {
+      var shiftBackBy = gridW * 3;
+      for(var i=0; i<shiftBackBy; i++) {
+        cellDataList.push( cellDataList.shift() );
+        cellImgdList.push( cellImgdList.shift() );
+      }
+      viewport.y0 = viewport.y0 - viewport.scale * 3 / gridH;
+      var firstInvalidatedIdx = grid.length - shiftBackBy;
+      paint(function(i){ return i < firstInvalidatedIdx; });
+      startRender(function(i){ return i >= firstInvalidatedIdx; });
+    }
+ 
+    function moveLeft() {
+      for(var i=0; i<3; i++) {
+        cellDataList.unshift( cellDataList.pop() );
+        cellImgdList.unshift( cellImgdList.pop() );
+      }
+      viewport.x0 = viewport.x0 - viewport.scale * 3 / gridW;
+      paint(function(i){ return i % gridW >= 3; });
+      startRender(function(i){ return i % gridW < 3; });
+    }
+    
+    function moveRight() {
+      for(var i=0; i<3; i++) {
+        cellDataList.push( cellDataList.shift() );
+        cellImgdList.push( cellImgdList.shift() );
+      }
+      viewport.x0 = viewport.x0 + viewport.scale * 3 / gridW;
+      paint(function(i){ return i % gridW < gridW - 3; });
+      startRender(function(i){ return i % gridW >= gridW - 3; });
+    }
+ 
+    function moveUpLeft() {
+      var shiftForwardBy = gridW * 2 + 2;
+      for(var i=0; i<shiftForwardBy; i++) {
+        cellDataList.unshift( cellDataList.pop() );
+        cellImgdList.unshift( cellImgdList.pop() );
+      }
+      viewport.y0 = viewport.y0 + viewport.scale * 2.0 / gridH;
+      viewport.x0 = viewport.x0 - viewport.scale * 2.0 / gridH;
+      paint(function(i){ return i >= shiftForwardBy && i % gridW >= 2; });
+      startRender(function(i){ return i < shiftForwardBy || i % gridW < 2; });
+    }
+ 
+    function moveUpRight() {
+      var shiftForwardBy = gridW * 2 - 2;
+      for(var i=0; i<shiftForwardBy; i++) {
+        cellDataList.unshift( cellDataList.pop() );
+        cellImgdList.unshift( cellImgdList.pop() );
+      }
+ 
+      viewport.y0 = viewport.y0 + viewport.scale * 2.0 / gridH;
+      viewport.x0 = viewport.x0 + viewport.scale * 2.0 / gridW;
+      paint(function(i){ return i >= shiftForwardBy && i % gridW < gridW - 2; });
+      startRender(function(i){ return i < shiftForwardBy || i % gridW >= gridW - 2; });
+ 
+    }
+ 
+    function moveDownLeft() {
+      var shiftBackBy = gridW * 2 - 2;
+      for(var i=0; i<shiftBackBy; i++) {
+        cellDataList.push( cellDataList.shift() );
+        cellImgdList.push( cellImgdList.shift() );
+      }
+      
+      viewport.y0 = viewport.y0 - viewport.scale * 2.0 / gridH;
+      viewport.x0 = viewport.x0 - viewport.scale * 2.0 / gridH;
+      var firstInvalidatedIdx = grid.length - shiftBackBy;
+      paint(function(i){ return i < firstInvalidatedIdx  && i % gridW >= 2; });
+      startRender(function(i){ return i >= firstInvalidatedIdx || i % gridW < 2; });
+    }
+ 
+    function moveDownRight() {
+      var shiftBackBy = gridW * 2 + 2;
+      for(var i=0; i<shiftBackBy; i++) {
+        cellDataList.push( cellDataList.shift() );
+        cellImgdList.push( cellImgdList.shift() );
+      }
+      
+      viewport.y0 = viewport.y0 - viewport.scale * 2.0 / gridH;
+      viewport.x0 = viewport.x0 + viewport.scale * 2.0 / gridW;
+      var firstInvalidatedIdx = grid.length - shiftBackBy;
+      paint(function(i){ return i < firstInvalidatedIdx && i % gridW < gridW - 2; });
+      startRender(function(i){ return i >= firstInvalidatedIdx || i % gridW >= gridW - 2; });
+    }
+ 
+    var nextCycleTimeout = null;
+ 
+    function startCycling(cycleStep) {
+      var _cycleStep = cycleStep;
+      setBusy( true );
+      document.getElementById('stopCyclingButton').disabled = false;
+      var cycleFunction;
+      cycleFunction = function() {
+        redColorData.offset = mod(redColorData.offset + _cycleStep, redCalc.cycle);
+        greenColorData.offset = mod(greenColorData.offset + _cycleStep, greenCalc.cycle);
+        blueColorData.offset = mod(blueColorData.offset + _cycleStep, blueCalc.cycle);
+        colorFields.store();
+        paint();
+        setBusy( true );
+        nextCycleTimeout = setTimeout(cycleFunction, 200);
+      };
+      cycleFunction();
+      return true;
+    }
+ 
+    function stopCycling() {
+      if(nextCycleTimeout) {
+        clearTimeout(nextCycleTimeout);
+        nextCycleTimeout = null;
+      }
+      setBusy( false );
+      document.getElementById('stopCyclingButton').disabled = true;
+      return true;
+    }
+ 
+    function teardown() {
+      if(continueRenderTimeout) { clearTimeout(continueRenderTimeout); }
+      if(nextCycleTimeout) { clearTimeout(nextCycleTimeout); }
+      appScope = undefined;
+      return true;
+    }
+    appScope.teardown = teardown;
+ 
+    appScope.doPaint = function() {
+      colorFields.load();
+      storeBookmark();
+      paint();
+    };
+ 
+    appScope.doStartRender = function() {
+      renderingFields.load();
+      colorFields.load();
+      storeBookmark();
+      startRender();
+      return true;
+    };
+ 
+    function newDoMoveFn(moveFn) {
+      var _moveFn = moveFn;
+      return function() {
+        colorFields.load();
+        _moveFn();
+        renderingFields.store();
+        storeBookmark();
+        return true;
+      };
+    }
+ 
+    appScope.doMoveUp    = newDoMoveFn( moveUp    );
+    appScope.doMoveDown  = newDoMoveFn( moveDown  );
+    appScope.doMoveLeft  = newDoMoveFn( moveLeft  );
+    appScope.doMoveRight = newDoMoveFn( moveRight );
+    appScope.doMoveUpLeft    = newDoMoveFn( moveUpLeft    );
+    appScope.doMoveUpRight   = newDoMoveFn( moveUpRight   );
+    appScope.doMoveDownLeft  = newDoMoveFn( moveDownLeft  );
+    appScope.doMoveDownRight = newDoMoveFn( moveDownRight );
+    
+    appScope.doGoHome = function() {
+      renderingFields.storeDefaults();
+      appScope.doStartRender();
+    };
+    
+    appScope.doResetDefaultColoring = function() {
+      colorFields.storeDefaults();
+      appScope.doPaint();
+    };
+    
+    (function() {
+      var _startButton;
+      var stopCyclingButtonElem = document.getElementById('stopCyclingButton');
+      appScope.doStartCycling = function(cycleStep, startButton) {
+        _startButton = startButton;
+        colorFields.load();
+        storeBookmark();
+        startCycling(cycleStep);
+        stopCyclingButtonElem.focus();
+      };
+      appScope.doStopCycling = function() {
+        stopCycling();
+        if(_startButton) { _startButton.focus(); }
+        storeBookmark();
+      };
+    })();
+    
+    appScope.doLoadBookmark = function() {
+      loadBookmark();
+      appScope.doStartRender();
+    };
+    
+    setBusy( false );
+ 
+    return true;
+  };
+ 
+  return appScope;
+}();
+ 
+    </script>
+    
+    <style>
+      td {text-align : center;}
+    </style>
+    
+  </head>
+ 
+  <body style='background-color:#bbb;'
+        onload="pageApp.init() && pageApp.doStartRender();"
+        onunload="pageApp.teardown();"
+  >
+
+<h2>Mandebrot Set Generator Implemented Using Javascript and the HTML5 &lt;canvas&gt; Element</h2>
+
+<table style='float: left; margin: 0 1.5em 1.5em 0;'>
+  <tr>
+    <td><input id='moveUpLeftButton' type='button' value=' ' onclick='pageApp.doMoveUpLeft();' /></td>
+    <td><input id='moveUpButton' type='button' value='/\' onclick='pageApp.doMoveUp();' /></td>
+    <td><input id='moveUpRightButton' type='button' value=' ' onclick='pageApp.doMoveUpRight();' /></td>
+  </tr>
+  <tr>
+    <td><input id='moveLeftButton' type='button' value='&lt;' onclick='pageApp.doMoveLeft();' /></td>
+    <td>
+      <canvas id='theCanvas' width='1' height='1'
+              onclick='if(! this.disabled){ pageApp.zoomIn(); }'
+              title="Click to zoom in towards the center (independent of where you click in the image).">
+        <p>Your browser does not support the HTML5 canvas element.</p>
+        <p>See the list of recommended browsers below.</p>
+      </canvas>
+    </td>
+    <td><input id='moveRightButton' type='button' value='&gt;' onclick='pageApp.doMoveRight();' /></td>
+  </tr>
+  <tr>
+    <td><input id='moveDownLeftButton' type='button' value=' ' onclick='pageApp.doMoveDownLeft();' /></td>
+    <td><input id='moveDownButton' type='button' value='\/' onclick='pageApp.doMoveDown();' /></td>
+    <td><input id='moveDownRightButton' type='button' value=' ' onclick='pageApp.doMoveDownRight();' /></td>
+  </tr>
+  <tr>
+    <td> </td>
+    <td>
+      <input id='zoomInButton' type='button' value='Zoom In' onclick='pageApp.zoomIn();' />
+      <input id='zoomOutButton' type='button' value='Zoom Out' onclick='pageApp.zoomOut();' />
+      <input id='goHomeButton' type='button' value='Reset' onclick='pageApp.doGoHome();' />
+    </td>
+    <td> </td>
+  </tr>
+</table>
+
+<div style='float:left; width:35em;'>
+  <form id='renderForm' name='renderForm' onsubmit="return false;">
+    <p>
+      <label for='viewport_x0'>Center X</label>
+      <input id='viewport_x0' name='vx0' type="text" value='0.0' />
+      &nbsp;
+      <label for='viewport_y0'>Center Y</label>
+      <input id='viewport_y0' name='vy0' type="text" value='0.0' />
+    </p><p>
+      <label for='viewport_scale'>Scale</label>
+      <input id='viewport_scale' name='vs0' type="text" value='5.0' />
+    </p><p>
+      <label for='rendering_maxCount'>Max. Count</label>
+      <input id='rendering_maxCount' name='mxc' type="text" size='5' value='100' />
+    </p><p>
+      Higher count values take longer, but render more detail at smaller scales.
+    </p><p>
+      <input id='renderButton' type='submit' value='Render' onclick='pageApp.doStartRender();' />
+    </p>
+  </form>
+
+  <form id='paintForm' name='paintForm' onsubmit="return false;">
+    <table border='1' cellspacing='0' cellpadding='3'>
+      <tr>
+        <th rowspan='2'> </th>
+        <th colspan='2'>Range</th>
+        <th colspan='3'>Step</th>
+        <th rowspan='2'>Offset</th>
+      </tr>
+      <tr>
+        <th>From</th><th>To</th>
+        <th>Span</th><th>By</th><th>Direction</th>
+      </tr>
+      <tr>
+        <th>Red</th>
+        <td><input id='redCalcData_rangeFrom' name='rrf' type='text' size='3' value='0' /></td>
+        <td><input id='redCalcData_rangeTo' name='rrt' type='text' size='3' value='255' /></td>
+        <td>
+          <select id='redCalcData_stepSpanShift' name='rrs'>
+            <option value='0'>1</option>
+            <option value='1' selected='true'>2</option>
+            <option value='2'>4</option>
+            <option value='3'>8</option>
+            <option value='4'>16</option>
+            <option value='5'>32</option>
+          </select>
+        </td>
+        <td><input id='redCalcData_stepBy' name='rsb' type='text' size='3' value='47' /></td>
+        <td>
+          <select id='redCalcData_direction' name='rdi'>
+            <option value='UP'>Up</option>
+            <option value='DOWN'>Down</option>
+            <option value='UP_DOWN' selected='true'>Up/Down</option>
+          </select>
+        </td>
+        <td><input id='redCalcData_cycleOffset' name='rco' type='text' size='5' value='0' /></td>
+      </tr>
+      <tr>
+        <th>Green</th>
+        <td><input id='greenCalcData_rangeFrom' name='grf' type='text' size='3' value='0' /></td>
+        <td><input id='greenCalcData_rangeTo' name='grt' type='text' size='3' value='143' /></td>
+        <td>
+          <select id='greenCalcData_stepSpanShift' name='grs'>
+            <option value='0'>1</option>
+            <option value='1' selected='true'>2</option>
+            <option value='2'>4</option>
+            <option value='3'>8</option>
+            <option value='4'>16</option>
+            <option value='5'>32</option>
+          </select>
+        </td>
+        <td><input id='greenCalcData_stepBy' name='gsb' type='text' size='3' value='15' /></td>
+        <td>
+          <select id='greenCalcData_direction'>
+            <option value='UP'>Up</option>
+            <option value='DOWN'>Down</option>
+            <option value='UP_DOWN' selected='true'>Up/Down</option>
+          </select>
+        </td>
+        <td><input id='greenCalcData_cycleOffset' name='gco' type='text' size='5' value='1' /></td>
+      </tr>
+      <tr>
+        <th>Blue</th>
+        <td><input id='blueCalcData_rangeFrom' name='brf' type='text' size='3' value='0' /></td>
+        <td><input id='blueCalcData_rangeTo' name='brt' type='text' size='3' value='255' /></td>
+        <td>
+          <select id='blueCalcData_stepSpanShift' name='brs'>
+            <option value='0'>1</option>
+            <option value='1'>2</option>
+            <option value='2' selected='true'>4</option>
+            <option value='3'>8</option>
+            <option value='4'>16</option>
+            <option value='5'>32</option>
+          </select>
+        </td>
+        <td><input id='blueCalcData_stepBy' name='bsb' type='text' size='3' value='7' /></td>
+        <td>
+          <select id='blueCalcData_direction' name='bdi'>
+            <option value='UP'>Up</option>
+            <option value='DOWN'>Down</option>
+            <option value='UP_DOWN' selected='true'>Up/Down</option>
+          </select>
+        </td>
+        <td><input id='blueCalcData_cycleOffset' name='bco' type='text' size='5' value='98' /></td>
+      </tr>
+    </table>
+    <p>
+      <input id='paintButton' type='submit' value='Paint' onclick='pageApp.doPaint();' />
+      <input id='defaultColoringButton' type='submit' value='To Defaults' onclick='pageApp.doResetDefaultColoring();' />
+      <input id='cycleOutButton' type='button' value='Start Cycle Out' onclick='pageApp.doStartCycling(1, this);' />
+      <input id='cycleInButton' type='button' value='Start Cycle In' onclick='pageApp.doStartCycling(-1, this);' />
+      <input id='stopCyclingButton' type='button' value='Stop Cycling' onclick='pageApp.doStopCycling();' disabled='disabled' />
+    </p>
+  </form>
+
+  <form name='bookmarkForm' onsubmit="return false;">
+    <p>
+      <label for='bookmark'>Bookmark</label>
+      <input id='bookmark' name='bookmark' type='text' onclick="this.select();"
+                 title="Copy this value as a record of the current settings.  Restore settings by pasting a value in and clicking the 'Go' button."/>
+      <input id='goToBookmarkButton' type='submit' value='Go' onclick='pageApp.doLoadBookmark();' />
+    </p><p>
+      <label for='bookmarkUrl'>Bookmark URL</label>
+      <input id='bookmarkUrl' name='bookmarkUrl' type='text' onclick="this.select();" 
+             title="Use this URL as a link to this page with the current settings from an external location."/>
+    </p>
+  </form>
+
+</div>
+ 
+<p style='clear: both;'>
+  As of April 27, 2010, recommended browsers for this program are
+  current versions of...
+</p>
+<dl>
+  <dt>Windows</dt     ><dd>Opera, Google Chrome, or Apple Safari (Firefox works, but is slow)</dd>
+  <dt>OS X</dt        ><dd>Apple Safari (Firefox works, but is slow -- Opera and
+                          Chrome are untested)</dd>
+  <dt>Ubuntu Linux</dt><dd>Google Chrome (Firefox and Opera work, but are slow)</dd>
+  <dt>Other *nix</dt><dd>(presumably similar to Ubuntu Linux)</dd>
+</dl>
+
+<div>&copy; 2010, <a href='http://stevej.name'>Steve Jorgensen</a></div>
+
+  </body>
+</html>
