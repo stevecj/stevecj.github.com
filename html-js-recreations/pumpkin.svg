@@ -2,23 +2,49 @@
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" 
 "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
 
-<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox='0 0 100 100'>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" viewBox='0 0 100 115'>
+  <style type='text/css'><![CDATA[
+    svg {
+      background: black;
+    }
+    .pumpkin {
+      fill:   rgb(255, 100, 50);
+      stroke: rgb(150,  60, 30);
+      stroke-width: 1;
+    }
+    .stem {
+      fill: rgb(40,120,30);
+    }
+  ]]></style>
+  <style id='scripted-style' type='text/css'><![CDATA[
+  ]]></style>
   <defs>
-    <style type='text/css'><![CDATA[
-      .pumpkin {
-        fill:   rgb(255, 100, 50);
-        stroke: rgb(150,  60, 30);
-        stroke-width: 1;
-      }
-    ]]></style>
-    <style id='scripted-style' type='text/css'><![CDATA[
-    ]]></style>
+    <g id='jackolantern' viewBox='0 0 100 115' transform='translate(-50,-68)'>
+      <path class='stem' d="M 40,25 C 50,25 42,-2 48,3 L 56,7 C 51,7 55,25 60,25 Z"/>
+      <g transform='translate(0,15)'>
+        <path class='pumpkin' d="M 50,10 C -20,-5 -20,105 50,90 C 120,105 120,-5 50,10 Z" />
+        <path class='pumpkin' d="M 50,9 C 0,0 0,100 50,91 C 100,100 100,0 50,9 Z" />
+        <path class='pumpkin' d="M 50,8.5 C 25,3 25,97 50,91.5 C 75,97 75,3 50,8.5 Z" />
+        <path class='face' d="M 15,60 L 45,60 45,70 55,70 55,60 85,60 75,75 75,65 65,65 65,75 35,75 35,65 25,65 25,75 Z" />
+        <path class='face' d="M 50,30 L 60,50 40,50 Z" />
+        <path class='face' d="M 25,25 45,25 35,35 Z" />
+        <path class='face' d="M 55,25 75,25 65,35 Z" />
+      </g>
+    </g>
   </defs>
-  <circle class='pumpkin' cx="50" cy="50" r="45" />
-  <path class='face' d="M 15,60 L 45,60 45,70 55,70 55,60 85,60 75,75 75,65 65,65 65,75 35,75 35,65 25,65 25,75 Z" />
-  <path class='face' d="M 50,30 L 60,50 40,50 Z" />
-  <path class='face' d="M 25,25 45,25 35,35 Z" />
-  <path class='face' d="M 55,25 75,25 65,35 Z" />
+  <g transform='translate(30,30) scale(0.4,0.4) rotate(-10)'>
+    <g>
+      <animateTransform attributeName='transform' attributeType='XML' type='skewX' values='2;-2;2' dur='1.4s' repeatCount='indefinite' />
+      <use xlink:href='#jackolantern' />
+    </g>
+  </g>
+  <g transform='translate(45,45) scale(0.5,0.5)'><use xlink:href='#jackolantern' /></g>
+  <g transform='translate(65,65) scale(0.7,0.7)'>
+    <g>
+      <animateTransform attributeName='transform' attributeType='XML' type='rotate' from='0' to='359' dur='10s' repeatCount='indefinite' />
+      <use xlink:href='#jackolantern' />
+    </g>
+  </g>
   <script type="application/ecmascript"> <![CDATA[
     (function(){
       function intString(value) {
