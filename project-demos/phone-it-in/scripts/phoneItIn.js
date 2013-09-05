@@ -29,9 +29,7 @@ var phoneItIn = phoneItIn || {};
 
 phoneItIn.formatters = phoneItIn.formatters || {};
 
-phoneItIn.formatters.nanp = (function () {
-  var my = {};
-
+phoneItIn.formatters.nanp = (function (my) {
   function digitizeAlpha( value ) {
     return value
       .replace( /[a-c]/ig , '2' )
@@ -46,23 +44,6 @@ phoneItIn.formatters.nanp = (function () {
   my.digitizeAlpha = digitizeAlpha;
 
   function format( value ) {
-    var FORMAT_PATTERN = /^[(]?(\d\d\d)[)]?(\d\d\d)-?(\d\d\d\d)$/,
-        formatted = value.replace( /\s/g, '' );
-
-    if ( formatted.length === 0 ) {
-      return formatted;
-    }
-
-    formatted = digitizeAlpha( formatted );
-    if ( ! formatted.match( FORMAT_PATTERN ) ) {
-      return value;
-    }
-
-    return formatted.replace( FORMAT_PATTERN, '($1) $2-$3' );
-  }
-  my.format = format;
-
-  function active( value ) {
     var FORMAT_PATTERN = /^[(]?(...)[)]?(...)-?(....)(.*)$/,
         digits = (value + '__________').replace( /\s/g, '' ).replace( FORMAT_PATTERN, '$1$2$3$4' );
 
@@ -75,40 +56,38 @@ phoneItIn.formatters.nanp = (function () {
     }
     return digits.replace( FORMAT_PATTERN, '($1) $2-$3 $4' ).replace( / $/, '' );
   }
-  my.active = active;
+  my.format = format;
 
   function validityOf( value ) {
-    var activeFormatted, digits;
+    var formatted, digits;
 
     if( value.match(/[^-\dA-Za-z()\s]/) ) { return 'invalid'; }
 
-    activeFormatted = active( value );
-    if( activeFormatted.length > '(___) ___-____'.length ) { return 'invalid' }
+    formatted = format( value );
+    if( formatted.length > '(___) ___-____'.length ) { return 'invalid' }
 
-    digits = activeFormatted.replace( /^[(](...)[)] (...)-(....)$/, "$1$2$3" );
+    digits = formatted.replace( /^[(](...)[)] (...)-(....)$/, "$1$2$3" );
     if( digits.match(/[^\d_]/) ) { return 'invalid'; }
-    if( activeFormatted.match(/_/) ) { return 'partial'; }
+    if( formatted.match(/_/) ) { return 'partial'; }
 
     return 'complete';
   }
   my.validityOf = validityOf;
 
   return my;
-})();
+})( phoneItIn.formatters.nanp || {} );
 
-phoneItIn.UI = (function () {
-  var formatter = phoneItIn.formatters.nanp;
-
+phoneItIn.UI = (function ( document, formatter ) {
   function UI() { }
   UI.prototype = {};
 
   function addHelpToInput( input ) {
     var helpEl = document.createElement('DIV');
     helpEl.setAttribute( 'id', 'phin-help' );
-    helpEl.setAttribute('style',
+    helpEl.setAttribute( 'style',
       "position:absolute; " +
       "top:" + (input.offsetTop + input.offsetHeight) + "px; " +
-      "left:" + input.offsetLeft + "px;");
+      "left:" + input.offsetLeft + "px;" );
     helpEl.innerHTML = "<div id='phin-help-inner'></div>";
     input.parentNode.insertBefore( helpEl, input.nextSibling );
     updateHelpForInput( input );
@@ -119,7 +98,7 @@ phoneItIn.UI = (function () {
         helpEl      = document.getElementById( 'phin-help'       ),
         helpInnerEl = document.getElementById( 'phin-help-inner' );
 
-    helpInnerEl.innerHTML = formatter.active( input.value );
+    helpInnerEl.innerHTML = formatter.format( input.value );
     validity = formatter.validityOf( input.value );
     switch( validity ) {
       case 'partial'  : helpEl.className = ''              ; break;
@@ -134,10 +113,14 @@ phoneItIn.UI = (function () {
   }
 
   function formatValueOfInput( input ) {
-    input.value = formatter.format( input.value );
+    var value = input.value;
+
+    if ( formatter.validityOf( value ) === 'complete' ) {
+      input.value = formatter.format( value );
+    }
   }
 
-  function bindToInput( input ){
+  function bindToInput( input ) {
     input.addEventListener( 'focus' , function(){ addHelpToInput( input );     } );
     input.addEventListener( 'blur'  , function(){ formatValueOfInput( input ); } );
     input.addEventListener( 'blur'  , function(){ removeHelp();                } );
@@ -145,18 +128,7 @@ phoneItIn.UI = (function () {
   }
   UI.prototype.bindToInput = bindToInput;
 
-  return UI;
-})();
-
-(function () {
-  var ui;
-
-  function getUi() {
-    ui = ui || new phoneItIn.UI();
-    return ui;
-  }
-
-  function setupForTelInputs() {
+  function bindToTelInputs() {
     var i, input, type,
         inputs = document.getElementsByTagName('INPUT'),
         length = inputs.length;
@@ -165,9 +137,25 @@ phoneItIn.UI = (function () {
       input = inputs[ i ];
       type = input.getAttribute( 'type' );
       if ( type === 'tel' ) {
-        getUi().bindToInput( input );
+        this.bindToInput( input );
       }
     }
   }
-  phoneItIn.setupForTelInputs = setupForTelInputs;
-})();
+  UI.prototype.bindToTelInputs = bindToTelInputs;
+
+  return UI;
+})( document, phoneItIn.formatters.nanp );
+
+(function ( my ) {
+  var ui;
+
+  function getUi() {
+    ui = ui || new phoneItIn.UI();
+    return ui;
+  }
+
+  function setupForTelInputs() {
+    getUi().bindToTelInputs();
+  }
+  my.setupForTelInputs = setupForTelInputs;
+})( phoneItIn );
