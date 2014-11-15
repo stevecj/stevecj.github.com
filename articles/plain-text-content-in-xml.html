@@ -8,7 +8,7 @@
   </head>
   <body>
 
-    <h1>Representation of Arbitrary Plain Text Within XML Using Entity Substitution and CDATA Sections</h1>
+    <h1>Arbitrary Plain Text Within XML Using Entity Substitution and CDATA Sections</h1>
 
     <h2>Background</h2>
     <p>
@@ -112,7 +112,7 @@
       When text values are encoded into XML, any characters (such as less-than signs) are replaced
       with corresponding XML entities. When parsing the text back out from XML, those entities are
       decoded back into the characters that they represent. It is therefore unnecessary to use a
-      CDATA node to represent text that contains such characters.
+      CDATA section to represent text that contains such characters.
     </p>
 
     <h4>Code</h4>
@@ -130,7 +130,7 @@
     <h3>Example 2</h3>
 
     <p>
-      A CDATA node allows text content containing special characters to be included in XML without
+      A CDATA section allows text content containing special characters to be included in XML without
       needing to substitute entities for those characters. This is most useful when the XML document
       needs to be created or edited by a human using a text editor.
     </p>
@@ -152,15 +152,15 @@
     <p>
       In this example, we create a CDATA fragment in a string, and set that as the content of a text
       node. Since the XML builder is escaping characters for us, the surrounding angle-brackets are
-      replaced with entities, and we consequently do <em>not</em> actually have a CDATA node.
+      replaced with entities, and we consequently do <em>not</em> actually have a CDATA section.
       What we <em>do</em> have is a text node that contains a representation of what happens to be
-      an XML code fragment for a CDATA node. When that is parsed again, the parser does not know or
+      an XML code fragment for a CDATA section. When that is parsed again, the parser does not know or
       care that the content happens to represent a the XML code for CDATA, and we get back the entire
       CDATA representation as the text content of the element.
     </p><p>
-      Again, since this is not actually a CDATA node, the less-than characters and the ampersand within
-      the text are also replaced by entities. If that were <em>not</em> the case, then this would be
-      malformed XML that could not be parsed.
+      Again, since this is not actually a CDATA section, the less-than characters and the ampersand
+      within the text are also replaced by entities. If that were <em>not</em> the case, then this
+      would be malformed XML that could not be parsed.
     </p>
 
     <h4>Code</h4>
