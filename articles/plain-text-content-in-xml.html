@@ -48,26 +48,27 @@
     <h2>CDATA Sections</h2>
     <p>
       In addition to the use of entities, XML supports what is known as a CDATA section. Each
-      CDATA secion begins with <code>&lt;![CDATA[</code> and ends with </code>]]&gt;</code>.
-      All of the text within the CDATA section represents itself directly, and no entities need to
-      be used. In fact, no entities may be used because anything in the form of an entity will be
-      simply treated as that exact sequence of characters. As an example, when contained in a CDATA
-      block, <code>&amp;lt;</code> represents the text &quot;<samp>&amp;lt;</samp>&quot;, not the
-      text &quot;<samp>&lt;</samp>&quot;.
+      CDATA secion begins with &quot;<code>&lt;![CDATA[</code>&quot; and ends with
+      &quot;</code>]]&gt;</code>&quot;.  All of the text within the CDATA section represents
+      itself directly, and no entities need to be used. In fact, no entities may be used because
+      anything in the form of an entity will be simply treated as that exact sequence of
+      characters. As an example, when contained in a CDATA
+      section, <code>&amp;lt;</code> represents the text &quot;<samp>&amp;lt;</samp>&quot;, not
+      the text &quot;<samp>&lt;</samp>&quot;.
     </p><p>
       The only text that cannot be contained in a CDATA section is the character sequence of
       </code>]]&lt;</code> since that is what is used to indicate the end of the CDATA section.
     </p>
     <dl>
       <dt>Example</dt>
-      <dd><code>&lt;![CDATA[Example XML: &lt;SelfClosingElementTag /&gt;]]&gt;</code></dd>
+      <dd><code>&lt;![CDATA[Example XML: &lt;SelfClosingElementTag/&gt;]]&gt;</code></dd>
       <dt>Represents Text</dt>
-      <dd><samp>Example XML: &lt;SelfClosingElementTag /&gt;</samp></dd>
+      <dd><samp>Example XML: &lt;SelfClosingElementTag/&gt;</samp></dd>
     </dl>
     <p>
       Since entity substitution is available, CDATA is technically unnecessary. CDATA blocks are
-      convenient, however, for use in XML documents that are written or edited directly by a human
-      using a text editor.
+      convenient, however, for use in XML documents that are written or edited directly by a
+      humans using a text editors.
     </p>
 
 
