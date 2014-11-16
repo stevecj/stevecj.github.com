@@ -23,7 +23,7 @@
     </p><p>
       Example: <code>&lt;SomeElement&gt;Some text.&lt;/SomeElement&gt;</code>
     </p><p>
-      Additionally, an element with no content maybe optionally represented as a self-closing
+      Additionally, an element with no content may be optionally represented as a self-closing
       element tag. Such a tag has a slash directly preceding the right angle-bracket.
     </p><p>
       Example: <code>&lt;SomeSimpleElement/&gt;</code>
@@ -47,14 +47,14 @@
 
     <h2>CDATA Sections</h2>
     <p>
-      In addition to the use of entities, XML supports what is known as a CDATA section. Each
+      In addition to the use of entities, XML supports what are known as a CDATA sections. Each
       CDATA secion begins with &quot;<code>&lt;![CDATA[</code>&quot; and ends with
       &quot;</code>]]&gt;</code>&quot;.  All of the text within the CDATA section represents
       itself directly, and no entities need to be used. In fact, no entities may be used because
       anything in the form of an entity will be simply treated as that exact sequence of
-      characters. As an example, when contained in a CDATA
-      section, <code>&amp;lt;</code> represents the text &quot;<samp>&amp;lt;</samp>&quot;, not
-      the text &quot;<samp>&lt;</samp>&quot;.
+      characters. As an example, when contained in a CDATA section, <code>&amp;lt;</code>
+      represents the text &quot;<samp>&amp;lt;</samp>&quot;, not the text
+      &quot;<samp>&lt;</samp>&quot;.
     </p><p>
       The only text that cannot be contained in a CDATA section is the character sequence of
       </code>]]&lt;</code> since that is what is used to indicate the end of the CDATA section.
