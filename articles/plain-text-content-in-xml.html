@@ -4,6 +4,8 @@
     <meta charset="utf-8">
     <style>
       pre { border: solid 1px lightgray; padding: 0.5em; }
+      code { background-color: #EEC; }
+      samp { background-color: #CEC; }
     </style>
   </head>
   <body>
@@ -49,7 +51,7 @@
     <p>
       In addition to the use of entities, XML supports what are known as a CDATA sections. Each
       CDATA secion begins with &ldquo;<code>&lt;![CDATA[</code>&rdquo; and ends with
-      &ldquo;</code>]]&gt;</code>&rdquo;.  All of the text within the CDATA section represents
+      &ldquo;<code>]]&gt;</code>&rdquo;.  All of the text within the CDATA section represents
       itself directly, and no entities need to be used. In fact, no entities may be used because
       anything in the form of an entity will be simply treated as that exact sequence of
       characters. As an example, when contained in a CDATA section,
@@ -57,7 +59,7 @@
       not the text &ldquo;<samp>&lt;</samp>&rdquo;.
     </p><p>
       The only text that cannot be contained in a CDATA section is the character sequence of
-      &ldquo;</code>]]&lt;</code>&rdquo; since that is what is used to indicate the end of the
+      &ldquo;<code>]]&gt;</code>&rdquo; since that is what is used to indicate the end of the
       CDATA section.
     </p>
     <dl>
