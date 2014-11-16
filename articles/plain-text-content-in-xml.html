@@ -29,7 +29,7 @@
       Example: <code>&lt;SomeSimpleElement/&gt;</code>
     </p><p>
       Of course, you might want the text content to contain characters with special meaning to XML
-      such as the less-than character &quot;<samp>&lt;</samp>&quot;. XML provides 2 choices of
+      such as the less-than character &ldquo;<samp>&lt;</samp>&rdquo;. XML provides 2 choices of
       mechanism for dealing with that situation: XML entities and CDATA sections.
     </p>
 
@@ -38,26 +38,27 @@
       In XML, an entity is designated by a name preceded by an ampersand and followed by a
       semicolon. XML uses specific entites as substitites for characters in text content that
       would otherwise have special meaning in the XML markup. In particular,
-      &quot;<code>&amp;lt;</code>&quot; represents a less-than character
-      &quot;<samp>&lt;</samp>&quot; and &quot;<code>&amp;gt;</code>&quot; represents a
-      greater-than character &quot;<samp>&gt;</samp>&quot;. Also, since the ampersand represents
+      &ldquo;<code>&amp;lt;</code>&rdquo; represents a less-than character
+      &ldquo;<samp>&lt;</samp>&rdquo; and &ldquo;<code>&amp;gt;</code>&rdquo; represents a
+      greater-than character &ldquo;<samp>&gt;</samp>&rdquo;. Also, since the ampersand represents
       the start of an entity, the ampersand character itself must be represented as an entity,
-      which is &quot;<code>&amp;amp;</code>&quot;.
+      which is &ldquo;<code>&amp;amp;</code>&rdquo;.
     </p>
 
     <h2>CDATA Sections</h2>
     <p>
       In addition to the use of entities, XML supports what are known as a CDATA sections. Each
-      CDATA secion begins with &quot;<code>&lt;![CDATA[</code>&quot; and ends with
-      &quot;</code>]]&gt;</code>&quot;.  All of the text within the CDATA section represents
+      CDATA secion begins with &ldquo;<code>&lt;![CDATA[</code>&rdquo; and ends with
+      &ldquo;</code>]]&gt;</code>&rdquo;.  All of the text within the CDATA section represents
       itself directly, and no entities need to be used. In fact, no entities may be used because
       anything in the form of an entity will be simply treated as that exact sequence of
       characters. As an example, when contained in a CDATA section, <code>&amp;lt;</code>
-      represents the text &quot;<samp>&amp;lt;</samp>&quot;, not the text
-      &quot;<samp>&lt;</samp>&quot;.
+      represents the text &ldquo;<samp>&amp;lt;</samp>&rdquo;, not the text
+      &ldquo;<samp>&lt;</samp>&rdquo;.
     </p><p>
       The only text that cannot be contained in a CDATA section is the character sequence of
-      </code>]]&lt;</code> since that is what is used to indicate the end of the CDATA section.
+      &ldquo;</code>]]&lt;</code>&rdquo; since that is what is used to indicate the end of the
+      CDATA section.
     </p>
     <dl>
       <dt>Example</dt>
@@ -79,11 +80,12 @@
       uses the angle brackets for some things besides elements.
     </p><p>
       XML actually uses angle-brackets to represent at least 2 categories of thing that are not
-      elements. Those are processing directives (surrounded by <code>&lt;?</code> and
-      <code>?&gt;</code>) and declarative statements (surrounded by <code>&lt;!</code> and
-      <code>&gt;</code>). A CDATA section is a kind of declarative statement. A common example of
-      a processing directive is the XML prologue that may appear at the start of an XML document.
-      Common examples of declarative statements are comment blocks and CDATA sections.
+      elements. Those are processing directives (surrounded by &ldquo;<code>&lt;?</code>&rdquo; and
+      &ldquo;<code>?&gt;</code>&rdquo;) and declarative statements (surrounded by
+      &ldquo;<code>&lt;!</code>&rdquo; and &ldquo;<code>&gt;</code>&rdquo;). A CDATA section is a kind
+      of declarative statement. A common example of a processing directive is the XML prologue that
+      may appear at the start of an XML document. Common examples of declarative statements are
+      comment blocks and CDATA sections.
     </p>
     <dl>
       <dt>XML Prologue Example</dt>
@@ -150,11 +152,11 @@
 
     <p>
       In this example, we create a CDATA fragment in a string, and set that as the content of a text
-      node. Since the XML builder is escaping characters for us, the surrounding angle-brackets are
+      node. Since the XML builder is encoding characters for us, the surrounding angle-brackets are
       replaced with entities, and we consequently do <em>not</em> actually have a CDATA section.
       What we <em>do</em> have is a text node that contains a representation of what happens to be
       an XML code fragment for a CDATA section. When that is parsed again, the parser does not know or
-      care that the content happens to represent a the XML code for CDATA, and we get back the entire
+      care that the content happens to represent the XML code for CDATA, and we get back the entire
       CDATA representation as the text content of the element.
     </p><p>
       Again, since this is not actually a CDATA section, the less-than characters and the ampersand
