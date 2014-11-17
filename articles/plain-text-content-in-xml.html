@@ -19,9 +19,9 @@
       level, there is a root element, and within the root element or any child element, there can
       be elements or text, and the text may also contain elements.
     </p><p>
-      The start of an element is represented by an opening tag, which is an element name surrounded
+      The start of an element is represented by an opening tag that is an element name surrounded
       by angle brackets (less-than and greater-than characters) and the end of an element is a
-      closing tag, which is like the opening tag except that it includes a slash following the
+      closing tag that is like the opening tag except that it includes a slash following the
       left angle-bracket character.
     </p><p>
       Example: <code>&lt;SomeElement&gt;Some text.&lt;/SomeElement&gt;</code>
@@ -53,11 +53,11 @@
       In addition to the use of entities, XML supports what are known as a CDATA sections. Each
       CDATA secion begins with &ldquo;<code>&lt;![CDATA[</code>&rdquo; and ends with
       &ldquo;<code>]]&gt;</code>&rdquo;.  All of the text within the CDATA section represents
-      itself directly, and no entities need to be used. In fact, no entities may be used because
+      itself directly, and no entities need to be used. In fact, entities may not be used because
       anything in the form of an entity will be simply treated as that exact sequence of
       characters. As an example, when contained in a CDATA section,
-      &ldquo;<code>&amp;lt;</code>&rdquo; represents the text &ldquo;<samp>&amp;lt;</samp>&rdquo;,
-      not the text &ldquo;<samp>&lt;</samp>&rdquo;.
+      &ldquo;<code>&amp;lt;</code>&rdquo; represents the text &ldquo;<samp>&amp;lt;</samp>&rdquo;
+      and not the text &ldquo;<samp>&lt;</samp>&rdquo;.
     </p><p>
       The only text that cannot be contained in a CDATA section is the character sequence of
       &ldquo;<code>]]&gt;</code>&rdquo; since that is what is used to indicate the end of the
@@ -71,29 +71,28 @@
     </dl>
     <p>
       Since entity substitution is available, CDATA is technically unnecessary. CDATA blocks are
-      convenient, however, for use in XML documents that are written or edited directly by humans
-      using a text editors.
+      convenient, however, in XML documents that are written or edited directly by humans using
+      text editors.
     </p>
 
 
-    <h2>Processing Directives and Declarative Statements</h2>
+    <h2>Processing Instructions and Declarative Statements</h2>
     <p>
-      In the description of CDATA sections above, you might have noticed that the left
-      angle-bracket designated the start of something other than an element, so obviously, XML
-      uses the angle brackets for some things besides elements.
+      There are some things in XML that are surrounded by angle brackets that are not element
+      opening or closing tags. When the next character following the left angle-bracket is a
+      letter or a slash &ldquo;<code>/</code>&rdquo;, then it will be part of an element opening
+      or closing tag respectively. If, on the other hand, there are question marks just inside of
+      the angle brackets &ldquo;<code>&lt;?&hellip;?&gt;</code>&rdquo; then we have a processing
+      instruction. If there is an exclamation point following the left angle bracket
+      &ldquo;<code>&lt;!&hellip;&gt;</code>&rdquo; then we have a a declarative statement.
     </p><p>
-      XML actually uses angle-brackets to represent at least 2 categories of thing that are not
-      elements. Those are processing directives (surrounded by &ldquo;<code>&lt;?</code>&rdquo; and
-      &ldquo;<code>?&gt;</code>&rdquo;) and declarative statements (surrounded by
-      &ldquo;<code>&lt;!</code>&rdquo; and &ldquo;<code>&gt;</code>&rdquo;). A CDATA section is a kind
-      of declarative statement. A common example of a processing directive is the XML prologue that
-      may appear at the start of an XML document. Common examples of declarative statements are
-      comment blocks and CDATA sections.
-    </p>
+      Processing instructions include such things as XML stylesheet links and XML document
+      prologues (the prologue is arguably not exactly a processing instruction but has the same
+      form). Declarative statements include such things as XML comments and CDATA sections.
     <dl>
-      <dt>XML Prologue Example</dt>
+      <dt>XML Prologue Example (follows processing instruction form)</dt>
       <dd><code>&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot; standalone=&quot;yes&quot;?&gt;</code></dd>
-      <dt>Comment Block Example</dt>
+      <dt>Comment Block Example (a kind of declarative statement)</dt>
       <dd><code>&lt;!-- This is a comment --&gt;</code></dd>
     </dl>
 
@@ -101,10 +100,21 @@
     <p>
       The full specification of XML is big and complicated. There are several commonly used,
       standards-compliant code libraries for generating and parsing XML and you should nearly
-      always use one of those and not try to roll your own. There are far too many ways to
-      get things wrong. There are some limited cases in which you might want to hand-type an
-      XML document, but in that case, you should use an editor that can help you make sure
-      that the XML you are typing is at least well-formed.
+      always use one of those rather than trying to roll your own XML processing within your
+      application. There are far too many ways to get things wrong.
+    </p><p>
+      There are some limited cases in which you might want to hand-type an XML document, but
+      in those cases, you should use an editor that can help you make sure that the XML you are
+      typing is at least well-formed.
+    </p><p>
+      Not rolling your own code to generate XML means not doing <em>anything</em> with raw XML
+      content directly in your code. If you do use an XML library and try to handle parts of the
+      encoding/decoding directly as well, you will likely end up with the worst of both worlds.
+      You might, for instance, construct the text of a valid XML fragment, and then have that
+      become encoded as text content when you add it to the document such that it no loses its
+      meaning as XML markup. In addition, that code you wrote that appears to generate a valid
+      XML fragment likely will not do so in all cases unless you were <em>very</em> thorough
+      indeed.
     </p>
 
     <h2>Code Examples in JavaScript</h2>
@@ -115,8 +125,8 @@
     <p>
       When text values are encoded into XML, any characters (such as less-than signs) are replaced
       with corresponding XML entities. When parsing the text back out from XML, those entities are
-      decoded back into the characters that they represent. It is therefore unnecessary to use a
-      CDATA section to represent text that contains such characters.
+      decoded back into the characters that they represent. It is therefore never a
+      <em>requirement</em> to use a CDATA section for text that contains such characters.
     </p>
 
     <h4>Code</h4>
@@ -136,7 +146,7 @@
     <p>
       A CDATA section allows text content containing special characters to be included in XML without
       needing to substitute entities for those characters. This is most useful when the XML document
-      needs to be created or edited by a human using a text editor.
+      needs to be worked with by a human using a text editor.
     </p>
 
     <h4>Code</h4>
@@ -162,9 +172,9 @@
       care that the content happens to represent the XML code for CDATA, and we get back the entire
       CDATA representation as the text content of the element.
     </p><p>
-      Again, since this is not actually a CDATA section, the less-than characters and the ampersand
-      within the text are also replaced by entities. If that were <em>not</em> the case, then this
-      would be malformed XML that could not be parsed.
+      Again, since this is not <em>actually</em> a CDATA section, the less-than characters and the
+      ampersand within the text are also replaced by entities. If that were <em>not</em> the case,
+      then this would be malformed XML that could not be parsed.
     </p>
 
     <h4>Code</h4>
